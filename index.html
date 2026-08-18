@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KUB Wallet Dashboard · Bitkub Chain</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --status-good:    #0ca30c;
+    --status-critical:#d03b3b;
+    --status-warning: #fab219;
+    --series-1:       #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --status-good:    #0ca30c;
+      --status-critical:#e66767;
+      --status-warning: #fab219;
+      --series-1:       #3987e5;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --status-good:    #0ca30c;
+    --status-critical:#e66767;
+    --status-warning: #fab219;
+    --series-1:       #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body.viz-root { background: var(--page-plane); color: var(--text-primary); min-height: 100vh; padding: 32px 20px 60px; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--text-secondary); }
+
+  .page-header { margin-bottom: 18px; }
+
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 18px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; width: fit-content;
+  }
+  .tab-btn {
+    appearance: none; border: none; cursor: pointer; background: transparent;
+    color: var(--text-secondary); font-size: 13px; font-weight: 600;
+    padding: 8px 18px; border-radius: 9px; transition: background 0.15s ease, color 0.15s ease;
+  }
+  .tab-btn.active { background: var(--series-1); color: #ffffff; }
+  .tab-btn:not(.active):hover { background: var(--gridline); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .panel-sub { font-size: 13px; color: var(--text-secondary); }
+
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 12px; margin-right: 8px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--status-good);
+    box-shadow: 0 0 0 0 rgba(12,163,12,0.5);
+    animation: pulse 2s infinite;
+  }
+  .dot.err { background: var(--status-critical); animation: none; }
+  .dot.loading { background: var(--status-warning); animation: none; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(12,163,12,0.45); }
+    70%  { box-shadow: 0 0 0 6px rgba(12,163,12,0); }
+    100% { box-shadow: 0 0 0 0 rgba(12,163,12,0); }
+  }
+  .header-actions { display: flex; align-items: center; }
+
+  .get-btn {
+    appearance: none; border: none; cursor: pointer;
+    background: var(--series-1); color: #ffffff;
+    font-size: 14px; font-weight: 600;
+    padding: 10px 20px; border-radius: 10px;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: opacity 0.15s ease;
+  }
+  .get-btn:disabled { opacity: 0.55; cursor: default; }
+  .get-btn:not(:disabled):hover { opacity: 0.88; }
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  .get-btn.loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-line { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-align: right; }
+  .status-line.err { color: var(--status-critical); }
+
+  .stat-tile {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
+    display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .stat-tile .label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+  .stat-tile .value { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: proportional-nums; }
+  .stat-tile .value span.unit { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-left: 6px; }
+  .stat-tile .meta { font-size: 12px; color: var(--text-muted); }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+    font-variant-numeric: tabular-nums;
+  }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--gridline);
+  }
+  thead th.num { text-align: right; }
+  tbody td { padding: 10px 14px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--gridline); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td.addr { color: var(--text-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  tbody td.num { text-align: right; font-weight: 600; }
+  tbody td.status { text-align: center; width: 28px; }
+  .s-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background: var(--baseline); }
+  .s-dot.ok { background: var(--status-good); }
+  .s-dot.err { background: var(--status-critical); }
+
+  footer { margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+  footer code { background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <div class="page-header">
+    <h1>KUB Wallet Dashboard</h1>
+    <div class="sub">Bitkub Chain mainnet · 25 wallets · อ่านตรงจาก RPC ในเบราว์เซอร์ของคุณ ไม่ผ่านเซิร์ฟเวอร์กลาง</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnBalance" data-tab="balance">Balance</button>
+    <button class="tab-btn" id="tabBtnTx" data-tab="tx">Tx Count</button>
+  </div>
+
+  <!-- ===== Panel: Balance ===== -->
+  <section class="panel active" id="panel-balance">
+    <div class="panel-toolbar">
+      <div class="panel-sub">ยอด KUB คงเหลือ · auto-refresh ทุก 5 วินาที</div>
+      <div style="text-align:right">
+        <span class="live-pill"><span class="dot loading" id="balLiveDot"></span><span id="balLiveLabel">connecting…</span></span>
+      </div>
+    </div>
+
+    <div class="stat-tile">
+      <div>
+        <div class="label">Total balance</div>
+        <div class="value" id="balTotalValue">–<span class="unit">KUB</span></div>
+      </div>
+      <div class="meta" id="balLastUpdated">last updated: —</div>
+    </div>
+
+    <table>
+      <thead><tr><th style="width:28px"></th><th>Address</th><th class="num">Balance (KUB)</th></tr></thead>
+      <tbody id="balRows"></tbody>
+    </table>
+
+    <footer>
+      RPC: <code id="balRpcUsed">https://rpc.bitkubchain.io</code> (fallback <code>https://96.rpc.thirdweb.com</code>) · chain id 96
+    </footer>
+  </section>
+
+  <!-- ===== Panel: Tx Count ===== -->
+  <section class="panel" id="panel-tx">
+    <div class="panel-toolbar">
+      <div class="panel-sub">nonce (tx ที่ส่งออกจากแต่ละ wallet) via <code>eth_getTransactionCount</code> · auto-refresh ทุก 5 วินาที</div>
+      <div style="text-align:right">
+        <div class="header-actions">
+          <span class="live-pill"><span class="dot loading" id="txLiveDot"></span><span id="txLiveLabel">connecting…</span></span>
+          <button class="get-btn" id="txGetBtn"><span class="spinner"></span><span id="txGetBtnLabel">Refresh now</span></button>
+        </div>
+        <div class="status-line" id="txStatusLine">ยังไม่เคยดึงข้อมูล</div>
+      </div>
+    </div>
+
+    <div class="stat-tile">
+      <div>
+        <div class="label">รวมจำนวน tx (ส่งออก) ทั้ง 25 wallet</div>
+        <div class="value" id="txTotalValue">–<span class="unit">tx</span></div>
+      </div>
+      <div class="meta" id="txLastUpdated">last fetched: —</div>
+    </div>
+
+    <table>
+      <thead><tr><th style="width:28px"></th><th>Address</th><th class="num">Tx count (nonce)</th></tr></thead>
+      <tbody id="txRows"></tbody>
+    </table>
+
+    <footer>
+      RPC: <code id="txRpcUsed">https://rpc.bitkubchain.io</code> (fallback <code>https://96.rpc.thirdweb.com</code>) · chain id 96 ·
+      ค่านี้คือ nonce ของ wallet = จำนวน tx ที่ "ส่งออก" เท่านั้น ไม่รวม tx ที่รับเข้ามา
+    </footer>
+  </section>
+</div>
+
+<script>
+const WALLETS = [
+"0x9aa4e8d9e641037dd85bdbc5d781292e4ded4264",
+"0x6caefa813c232b6b5ffeb2e8723c96d4f1d5382b",
+"0x009addf8031681f009982e45aa4267b1735274ec",
+"0x99f071ec396573a41e89d98a6117def1376ba925",
+"0x8c47880946ea8390926c6c9061f6424b6f28a6e8",
+"0x127948885f1a13ebcbe454d715601e268e382261",
+"0xddc64b44350f5b2f223478af6b4b3f70d9cc7328",
+"0x131ff46200c6972082c142501c4f2975a493e622",
+"0xde2b746abf38d401ec5fadc3758c429d9640d93b",
+"0x3d39ecf3e9066f15a09dafc4c943a67e91a206e4",
+"0x9eb6630008aa986dd2888f6558c238a33d60957c",
+"0x9718bb37acd21bb3a67694bf7eb2786514967980",
+"0x25bc609bbdf6af5ae2c6cbec6e7a035cd39f2cf5",
+"0x1a2fba177d3273f92125bbd10017a16cfaa1583b",
+"0x61c60e865c5c5636031138b5ec4462064e5973fa",
+"0xa762990ca4dd94f20232361f7889d7231f7042fa",
+"0x30189c42fb554c3cf21acaab5f2b798f264f0181",
+"0xfd8a89a2c3ce9ccf67db1b1e708a9069b6300a7a",
+"0x0dbbed750434a9dd67f8470643848ccfbd71dd3e",
+"0xdd9acdcdbdb8157d50151c225c21b46451044992",
+"0x6138feb69c0063cca0449b9c02bec4d5f4143810",
+"0x660bc68cfd3b0ea1e3f719e5d21598aa4105523e",
+"0x0d8cf09b86447e600463a5ccd873885c302cd7f3",
+"0x2975256781f8bc70550583855068736ff5431084",
+"0x2f1d876ec06198e15e99782a5cd64b3fd0a9867e",
+];
+
+const RPC_URLS = ["https://rpc.bitkubchain.io", "https://96.rpc.thirdweb.com"];
+const POLL_MS = 5000;
+
+function short(addr) { return addr.slice(0, 8) + "…" + addr.slice(-6); }
+
+async function rpcBatchCall(url, addresses, method) {
+  const payload = addresses.map((addr, i) => ({
+    jsonrpc: "2.0",
+    id: i,
+    method,
+    params: [addr, "latest"],
+  }));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("unexpected response shape");
+  const byId = new Map(data.map(d => [d.id, d]));
+  return addresses.map((_, i) => {
+    const entry = byId.get(i);
+    if (!entry || entry.error || typeof entry.result !== "string") return null;
+    return BigInt(entry.result);
+  });
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* ---------- Balance tab ---------- */
+(function () {
+  const rowsEl = document.getElementById("balRows");
+  const liveDot = document.getElementById("balLiveDot");
+  const liveLabel = document.getElementById("balLiveLabel");
+  const totalValueEl = document.getElementById("balTotalValue");
+  const lastUpdatedEl = document.getElementById("balLastUpdated");
+  const rpcUsedEl = document.getElementById("balRpcUsed");
+
+  WALLETS.forEach((addr, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="status"><span class="s-dot" id="bal-dot-${i}"></span></td>
+      <td class="addr" title="${addr}">${short(addr)}</td>
+      <td class="num" id="bal-cell-${i}">–</td>
+    `;
+    rowsEl.appendChild(tr);
+  });
+
+  function weiToKub(weiBig) {
+    const NEG = weiBig < 0n;
+    if (NEG) weiBig = -weiBig;
+    const base = 10n ** 18n;
+    const whole = weiBig / base;
+    const frac = weiBig % base;
+    let fracStr = frac.toString().padStart(18, "0").slice(0, 6);
+    return (NEG ? "-" : "") + whole.toString() + "." + fracStr;
+  }
+
+  let rpcIndex = 0;
+  async function poll() {
+    let results = null, usedUrl = null;
+    for (let attempt = 0; attempt < RPC_URLS.length; attempt++) {
+      const url = RPC_URLS[(rpcIndex + attempt) % RPC_URLS.length];
+      try {
+        results = await rpcBatchCall(url, WALLETS, "eth_getBalance");
+        usedUrl = url;
+        rpcIndex = (rpcIndex + attempt) % RPC_URLS.length;
+        break;
+      } catch (e) { /* try next */ }
+    }
+
+    if (!results) {
+      liveDot.className = "dot err";
+      liveLabel.textContent = "connection failed, retrying…";
+      return;
+    }
+
+    liveDot.className = "dot";
+    liveLabel.textContent = "live";
+    rpcUsedEl.textContent = usedUrl;
+
+    let total = 0n, anyError = false;
+    results.forEach((wei, i) => {
+      const dot = document.getElementById("bal-dot-" + i);
+      const cell = document.getElementById("bal-cell-" + i);
+      if (wei === null) {
+        dot.className = "s-dot err";
+        cell.textContent = "error";
+        anyError = true;
+      } else {
+        dot.className = "s-dot ok";
+        cell.textContent = weiToKub(wei);
+        total += wei;
+      }
+    });
+
+    totalValueEl.innerHTML = weiToKub(total) + '<span class="unit">KUB</span>';
+    lastUpdatedEl.textContent = "last updated: " + new Date().toLocaleTimeString("th-TH", { hour12: false }) +
+      (anyError ? " · some wallets failed to load" : "");
+  }
+
+  poll();
+  setInterval(poll, POLL_MS);
+})();
+
+/* ---------- Tx Count tab ---------- */
+(function () {
+  const rowsEl = document.getElementById("txRows");
+  const getBtn = document.getElementById("txGetBtn");
+  const getBtnLabel = document.getElementById("txGetBtnLabel");
+  const statusLine = document.getElementById("txStatusLine");
+  const totalValueEl = document.getElementById("txTotalValue");
+  const lastUpdatedEl = document.getElementById("txLastUpdated");
+  const rpcUsedEl = document.getElementById("txRpcUsed");
+  const liveDot = document.getElementById("txLiveDot");
+  const liveLabel = document.getElementById("txLiveLabel");
+
+  WALLETS.forEach((addr, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="status"><span class="s-dot" id="tx-dot-${i}"></span></td>
+      <td class="addr" title="${addr}">${short(addr)}</td>
+      <td class="num" id="tx-cell-${i}">–</td>
+    `;
+    rowsEl.appendChild(tr);
+  });
+
+  let inFlight = false;
+  let rpcIndex = 0;
+
+  async function getTxCounts() {
+    if (inFlight) return;
+    inFlight = true;
+
+    getBtn.disabled = true;
+    getBtn.classList.add("loading");
+    getBtnLabel.textContent = "กำลังดึงข้อมูล…";
+    statusLine.classList.remove("err");
+    statusLine.textContent = "กำลังเรียก RPC…";
+
+    let results = null, usedUrl = null;
+    for (let attempt = 0; attempt < RPC_URLS.length; attempt++) {
+      const url = RPC_URLS[(rpcIndex + attempt) % RPC_URLS.length];
+      try {
+        results = await rpcBatchCall(url, WALLETS, "eth_getTransactionCount");
+        usedUrl = url;
+        rpcIndex = (rpcIndex + attempt) % RPC_URLS.length;
+        break;
+      } catch (e) { /* try next */ }
+    }
+
+    getBtn.disabled = false;
+    getBtn.classList.remove("loading");
+    getBtnLabel.textContent = "Refresh now";
+    inFlight = false;
+
+    if (!results) {
+      liveDot.className = "dot err";
+      liveLabel.textContent = "connection failed, retrying…";
+      statusLine.classList.add("err");
+      statusLine.textContent = "ดึงข้อมูลไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที";
+      return;
+    }
+
+    liveDot.className = "dot";
+    liveLabel.textContent = "live";
+    rpcUsedEl.textContent = usedUrl;
+
+    let total = 0, anyError = false;
+    results.forEach((count, i) => {
+      const dot = document.getElementById("tx-dot-" + i);
+      const cell = document.getElementById("tx-cell-" + i);
+      if (count === null) {
+        dot.className = "s-dot err";
+        cell.textContent = "error";
+        anyError = true;
+      } else {
+        const n = Number(count);
+        dot.className = "s-dot ok";
+        cell.textContent = n.toLocaleString("en-US");
+        total += n;
+      }
+    });
+
+    totalValueEl.innerHTML = total.toLocaleString("en-US") + '<span class="unit">tx</span>';
+    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("th-TH", { hour12: false });
+    statusLine.textContent = anyError ? "ดึงสำเร็จบางส่วน (มี wallet ที่ error)" : "ดึงสำเร็จ · รีเฟรชครั้งถัดไปใน 5 วินาที";
+  }
+
+  getBtn.addEventListener("click", getTxCounts);
+  getTxCounts();
+  setInterval(getTxCounts, POLL_MS);
+})();
+</script>
+</body>
+</html>
