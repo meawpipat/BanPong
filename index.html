@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -84,7 +84,7 @@
     align-items: start; gap: 16px; margin-bottom: 16px;
   }
   .panel-toolbar > :last-child { justify-self: end; }
-  /* จอแคบ: ยอมให้ซ้อนกัน ดีกว่าบีบปุ่มจนล้น */
+  /* narrow screens: stack rather than squeeze the button */
   @media (max-width: 640px) {
     .panel-toolbar { grid-template-columns: 1fr; }
     .panel-toolbar > :last-child { justify-self: stretch; }
@@ -173,7 +173,7 @@
 <div class="wrap">
   <div class="page-header">
     <h1>KUB Wallet Dashboard</h1>
-    <div class="sub">Bitkub Chain mainnet · 25 wallets · อ่านตรงจาก RPC ในเบราว์เซอร์ของคุณ ไม่ผ่านเซิร์ฟเวอร์กลาง</div>
+    <div class="sub">Bitkub Chain mainnet · 25 wallets · read straight from RPC in your browser, no server in between</div>
   </div>
 
   <div class="tabs">
@@ -185,7 +185,7 @@
   <!-- ===== Panel: Balance ===== -->
   <section class="panel active" id="panel-balance">
     <div class="panel-toolbar">
-      <div class="panel-sub">ยอด KUB คงเหลือ · auto-refresh ทุก 5 วินาที</div>
+      <div class="panel-sub">KUB balance · auto-refreshes every 5s</div>
       <div style="text-align:right">
         <span class="live-pill"><span class="dot loading" id="balLiveDot"></span><span id="balLiveLabel">connecting…</span></span>
       </div>
@@ -212,19 +212,19 @@
   <!-- ===== Panel: Tx Count ===== -->
   <section class="panel" id="panel-tx">
     <div class="panel-toolbar">
-      <div class="panel-sub">nonce (tx ที่ส่งออกจากแต่ละ wallet) via <code>eth_getTransactionCount</code> · auto-refresh ทุก 5 วินาที</div>
+      <div class="panel-sub">nonce (txs sent from each wallet) via <code>eth_getTransactionCount</code> · auto-refreshes every 5s</div>
       <div style="text-align:right">
         <div class="header-actions">
           <span class="live-pill"><span class="dot loading" id="txLiveDot"></span><span id="txLiveLabel">connecting…</span></span>
           <button class="get-btn" id="txGetBtn"><span class="spinner"></span><span id="txGetBtnLabel">Refresh now</span></button>
         </div>
-        <div class="status-line" id="txStatusLine">ยังไม่เคยดึงข้อมูล</div>
+        <div class="status-line" id="txStatusLine">not fetched yet</div>
       </div>
     </div>
 
     <div class="stat-tile">
       <div>
-        <div class="label">รวมจำนวน tx (ส่งออก) ทั้ง 25 wallet</div>
+        <div class="label">Total txs sent across all 25 wallets</div>
         <div class="value" id="txTotalValue">–<span class="unit">tx</span></div>
       </div>
       <div class="meta" id="txLastUpdated">last fetched: —</div>
@@ -237,7 +237,7 @@
 
     <footer>
       RPC: <code id="txRpcUsed">https://rpc.bitkubchain.io</code> (fallback <code>https://96.rpc.thirdweb.com</code>) · chain id 96 ·
-      ค่านี้คือ nonce ของ wallet = จำนวน tx ที่ "ส่งออก" เท่านั้น ไม่รวม tx ที่รับเข้ามา
+      this is the wallet nonce = txs <strong>sent</strong> only; incoming txs are not counted
     </footer>
   </section>
 
@@ -245,26 +245,26 @@
   <section class="panel" id="panel-mint">
     <div class="panel-toolbar">
       <div class="panel-sub">
-        จำนวนที่ mint ไปแล้วต่อ product ของสัญญา <code>EventMintV1</code> · อ่านจาก <code>products(id)</code> ตรง ๆ
-        (ไม่ต้องไล่ log) · auto-refresh ทุก 5 วินาที
+        how much of each <code>EventMintV1</code> product has been minted, read straight from
+        <code>products(id)</code> (no log scanning) · auto-refreshes every 5s
       </div>
       <div style="text-align:right">
         <div class="header-actions">
           <span class="live-pill"><span class="dot loading" id="mintLiveDot"></span><span id="mintLiveLabel">connecting…</span></span>
           <button class="get-btn" id="mintGetBtn"><span class="spinner"></span><span id="mintGetBtnLabel">Refresh now</span></button>
         </div>
-        <div class="status-line" id="mintStatusLine">ยังไม่เคยดึงข้อมูล</div>
+        <div class="status-line" id="mintStatusLine">not fetched yet</div>
       </div>
     </div>
 
     <div class="stat-tile">
       <div>
-        <div class="label">NFT ที่ mint ไปแล้ว (ERC-721 / ERC-1155)</div>
-        <div class="value" id="mintTotalValue">–<span class="unit">ชิ้น</span></div>
+        <div class="label">NFTs minted (ERC-721 / ERC-1155)</div>
+        <div class="value" id="mintTotalValue">–<span class="unit">pieces</span></div>
       </div>
       <div class="meta">
-        <div id="mintCoinTotal">เหรียญ (ERC-20): —</div>
-        <div id="mintStatus">สถานะสัญญา: —</div>
+        <div id="mintCoinTotal">Coins (ERC-20): —</div>
+        <div id="mintStatus">Contract status: —</div>
         <div id="mintLastUpdated">last fetched: —</div>
       </div>
     </div>
@@ -286,8 +286,8 @@
       Contract: <a href="https://www.kubscan.com/address/0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441?tab=contract"
         target="_blank" rel="noreferrer noopener"><code>0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441</code> ↗</a> (EventMintV1) ·
       RPC: <code id="mintRpcUsed">https://rpc.bitkubchain.io</code> · chain id 96 ·
-      <strong>minted</strong> คือยอดสะสมตั้งแต่ deploy · <code>max supply = 0</code> หมายถึงไม่จำกัด ·
-      product แบบ ERC-20 นับเป็นจำนวนเหรียญ (18 decimals) จึงแยกยอดจาก NFT
+      <strong>minted</strong> is cumulative since deploy · <code>max supply = 0</code> means unlimited ·
+      ERC-20 products count coins (18 decimals), so their total is kept separate from NFT pieces
     </footer>
   </section>
 </div>
@@ -349,8 +349,8 @@ async function rpcBatchCall(url, addresses, method) {
   });
 }
 
-/* ---------- eth_call (สำหรับ contract) ---------- */
-// batch แบบ generic — ต่างจาก rpcBatchCall ตรงที่ส่ง method/params ของใครของมันได้
+/* ---------- eth_call (contract reads) ---------- */
+// generic batch — unlike rpcBatchCall, each call carries its own method/params
 async function rpcBatchRaw(url, calls) {
   const payload = calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: c.method, params: c.params }));
   const res = await fetch(url, {
@@ -369,7 +369,7 @@ async function rpcBatchRaw(url, calls) {
 }
 
 const ethCall = (to, data) => ({ method: "eth_call", params: [{ to, data }, "latest"] });
-/** ตัด return data เป็น word ละ 32 ไบต์ (ฟิลด์ที่เราอ่านเป็น static ทั้งหมด จึงหั่นตรง ๆ ได้) */
+/** split return data into 32-byte words (every field we read is static, so slicing is enough) */
 const words = (hex) => (hex && hex.length > 2 ? hex.slice(2).match(/.{64}/g) ?? [] : []);
 const toBig = (w) => (w ? BigInt("0x" + w) : null);
 const toAddr = (w) => (w ? "0x" + w.slice(24) : null);
@@ -453,7 +453,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 
     totalValueEl.innerHTML = weiToKub(total) + '<span class="unit">KUB</span>';
-    lastUpdatedEl.textContent = "last updated: " + new Date().toLocaleTimeString("th-TH", { hour12: false }) +
+    lastUpdatedEl.textContent = "last updated: " + new Date().toLocaleTimeString("en-GB", { hour12: false }) +
       (anyError ? " · some wallets failed to load" : "");
   }
 
@@ -492,9 +492,9 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
     getBtn.disabled = true;
     getBtn.classList.add("loading");
-    getBtnLabel.textContent = "กำลังดึงข้อมูล…";
+    getBtnLabel.textContent = "Fetching…";
     statusLine.classList.remove("err");
-    statusLine.textContent = "กำลังเรียก RPC…";
+    statusLine.textContent = "calling RPC…";
 
     let results = null, usedUrl = null;
     for (let attempt = 0; attempt < RPC_URLS.length; attempt++) {
@@ -516,7 +516,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
       liveDot.className = "dot err";
       liveLabel.textContent = "connection failed, retrying…";
       statusLine.classList.add("err");
-      statusLine.textContent = "ดึงข้อมูลไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที";
+      statusLine.textContent = "fetch failed — retrying automatically in 5s";
       return;
     }
 
@@ -541,8 +541,8 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 
     totalValueEl.innerHTML = total.toLocaleString("en-US") + '<span class="unit">tx</span>';
-    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("th-TH", { hour12: false });
-    statusLine.textContent = anyError ? "ดึงสำเร็จบางส่วน (มี wallet ที่ error)" : "ดึงสำเร็จ · รีเฟรชครั้งถัดไปใน 5 วินาที";
+    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("en-GB", { hour12: false });
+    statusLine.textContent = anyError ? "partially fetched (some wallets errored)" : "fetched · next refresh in 5s";
   }
 
   getBtn.addEventListener("click", getTxCounts);
@@ -552,12 +552,12 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
 /* ---------- EventMint tab ---------- */
 (function () {
-  // selector ดึงมาจาก artifact ของ EventMintV1 (hardhat build-info) — ไม่ต้องมี keccak ในหน้านี้
+  // selectors taken from the EventMintV1 artifact (hardhat build-info) — no keccak needed on this page
   const CONTRACT = "0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441";
   const SEL = { productCount: "0xe0f6ef87", products: "0x7acc0b20", paused: "0x5c975abb" };
-  const KIND = { 0: "ERC-20", 1: "ERC-721", 2: "ERC-1155" }; // enum ProductKind ของสัญญา
-  const ERC20_DECIMALS = 18; // เหรียญของโปรเจกต์ใช้ 18 — ไม่ยิง decimals() เพิ่มเพื่อประหยัด call
-  const CHUNK = 50;          // แบ่ง batch (ของจริง 143 product · RPC สำรองอาจรับได้น้อยกว่าตัวหลัก)
+  const KIND = { 0: "ERC-20", 1: "ERC-721", 2: "ERC-1155" }; // the contract's ProductKind enum
+  const ERC20_DECIMALS = 18; // the project's coin uses 18 — we don't spend a call on decimals()
+  const CHUNK = 50;          // batch size (143 products today · the fallback RPC may accept less than the primary)
 
   const rowsEl = document.getElementById("mintRows");
   const getBtn = document.getElementById("mintGetBtn");
@@ -574,7 +574,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   let inFlight = false;
   let rpcIndex = 0;
 
-  /** ยิง calls ชุดหนึ่งไปยัง RPC ตัวแรกที่ตอบได้ (fallback เหมือนแท็บอื่น) */
+  /** send a batch to the first RPC that answers (same fallback as the other tabs) */
   async function callWithFallback(calls) {
     for (let attempt = 0; attempt < RPC_URLS.length; attempt++) {
       const url = RPC_URLS[(rpcIndex + attempt) % RPC_URLS.length];
@@ -582,12 +582,12 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
         const out = await rpcBatchRaw(url, calls);
         rpcIndex = (rpcIndex + attempt) % RPC_URLS.length;
         return { out, url };
-      } catch (e) { /* ลองตัวถัดไป */ }
+      } catch (e) { /* try the next one */ }
     }
     return null;
   }
 
-  /** จำนวนเต็มแบบ BigInt → ข้อความ (ห้ามแปลงเป็น Number: ยอด ERC-20 เกิน MAX_SAFE_INTEGER) */
+  /** BigInt → text (never via Number: ERC-20 totals exceed MAX_SAFE_INTEGER) */
   const fmtInt = (v) => v.toLocaleString("en-US");
   function fmtUnits(v, decimals) {
     const base = 10n ** BigInt(decimals);
@@ -607,9 +607,9 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     inFlight = true;
     getBtn.disabled = true;
     getBtn.classList.add("loading");
-    getBtnLabel.textContent = "กำลังดึงข้อมูล…";
+    getBtnLabel.textContent = "Fetching…";
     statusLine.classList.remove("err");
-    statusLine.textContent = "กำลังเรียก RPC…";
+    statusLine.textContent = "calling RPC…";
 
     const done = () => {
       getBtn.disabled = false;
@@ -618,24 +618,24 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
       inFlight = false;
     };
 
-    // รอบแรก: มีกี่ product + สัญญาถูก pause ไหม
+    // first round: how many products, and is the contract paused
     const head = await callWithFallback([ethCall(CONTRACT, SEL.productCount), ethCall(CONTRACT, SEL.paused)]);
     if (!head || head.out[0] === null) {
       done();
-      return fail("ดึงข้อมูลสัญญาไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที");
+      return fail("could not read the contract — retrying automatically in 5s");
     }
 
     const count = Number(toBig(words(head.out[0])[0]) ?? 0n);
     const paused = toBig(words(head.out[1] ?? "")[0]) === 1n;
 
-    // รอบสอง: products(0..count-1) — **id เริ่มที่ 0** (ยืนยันกับ chain จริง: products(0) มีข้อมูล)
+    // second round: products(0..count-1) — ids are **0-based** (verified on chain: products(0) is real)
     const results = [];
     for (let from = 0; from < count; from += CHUNK) {
       const ids = Array.from({ length: Math.min(CHUNK, count - from) }, (_, i) => from + i);
       const res = await callWithFallback(ids.map(id => ethCall(CONTRACT, SEL.products + uintArg(id))));
       if (!res) {
         done();
-        return fail("ดึงรายการ product ไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที");
+        return fail("could not read the product list — retrying automatically in 5s");
       }
       results.push(...res.out);
       rpcUsedEl.textContent = res.url;
@@ -644,7 +644,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 
     liveDot.className = "dot";
     liveLabel.textContent = "live";
-    statusEl.textContent = `สถานะสัญญา: ${paused ? "⏸ paused" : "✓ active"} · ${fmtInt(BigInt(count))} product`;
+    statusEl.textContent = `Contract status: ${paused ? "⏸ paused" : "✓ active"} · ${fmtInt(BigInt(count))} products`;
 
     let nftTotal = 0n, coinTotal = 0n, anyError = false;
     rowsEl.innerHTML = "";
@@ -674,10 +674,10 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
       rowsEl.appendChild(tr);
     });
 
-    totalValueEl.innerHTML = fmtInt(nftTotal) + '<span class="unit">ชิ้น</span>';
-    coinTotalEl.textContent = "เหรียญ (ERC-20): " + fmtUnits(coinTotal, ERC20_DECIMALS);
-    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("th-TH", { hour12: false });
-    statusLine.textContent = anyError ? "ดึงสำเร็จบางส่วน (มี product ที่ error)" : "ดึงสำเร็จ · รีเฟรชครั้งถัดไปใน 5 วินาที";
+    totalValueEl.innerHTML = fmtInt(nftTotal) + '<span class="unit">pieces</span>';
+    coinTotalEl.textContent = "Coins (ERC-20): " + fmtUnits(coinTotal, ERC20_DECIMALS);
+    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("en-GB", { hour12: false });
+    statusLine.textContent = anyError ? "partially fetched (some products errored)" : "fetched · next refresh in 5s";
   }
 
   getBtn.addEventListener("click", load);
