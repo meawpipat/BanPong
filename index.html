@@ -165,6 +165,19 @@
 
   footer { margin-top: 16px; font-size: 12px; color: var(--text-muted); }
   footer code { background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  .contract-line {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-muted); margin-bottom: 14px;
+  }
+  .contract-line a {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--series-1); text-decoration: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 10px;
+  }
+  .contract-line a:hover { border-color: var(--series-1); }
+
   footer a { color: var(--series-1); text-decoration: none; }
   footer a:hover code { border-color: var(--series-1); }
 </style>
@@ -243,6 +256,13 @@
 
   <!-- ===== Panel: EventMint (contract) ===== -->
   <section class="panel" id="panel-mint">
+    <div class="contract-line">
+      <span>Contract (EventMintV1)</span>
+      <a href="https://www.kubscan.com/address/0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441?tab=contract"
+         target="_blank" rel="noreferrer noopener"
+         title="View on kubscan">0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441 ↗</a>
+    </div>
+
     <div class="panel-toolbar">
       <div class="panel-sub">
         how much of each <code>EventMintV1</code> product has been minted, read straight from
@@ -283,8 +303,6 @@
     </table>
 
     <footer>
-      Contract: <a href="https://www.kubscan.com/address/0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441?tab=contract"
-        target="_blank" rel="noreferrer noopener"><code>0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441</code> ↗</a> (EventMintV1) ·
       RPC: <code id="mintRpcUsed">https://rpc.bitkubchain.io</code> · chain id 96 ·
       <strong>minted</strong> is cumulative since deploy · <code>max supply = 0</code> means unlimited ·
       ERC-20 products count coins (18 decimals), so their total is kept separate from NFT pieces
