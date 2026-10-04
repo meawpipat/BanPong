@@ -79,14 +79,23 @@
   .panel { display: none; }
   .panel.active { display: block; }
 
-  .panel-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .panel-toolbar {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start; gap: 16px; margin-bottom: 16px;
+  }
+  .panel-toolbar > :last-child { justify-self: end; }
+  /* จอแคบ: ยอมให้ซ้อนกัน ดีกว่าบีบปุ่มจนล้น */
+  @media (max-width: 640px) {
+    .panel-toolbar { grid-template-columns: 1fr; }
+    .panel-toolbar > :last-child { justify-self: stretch; }
+  }
   .panel-sub { font-size: 13px; color: var(--text-secondary); }
 
   .live-pill {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 600; color: var(--text-secondary);
     background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: 999px; padding: 6px 12px; margin-right: 8px;
+    border-radius: 999px; padding: 6px 12px;
   }
   .dot {
     width: 8px; height: 8px; border-radius: 50%;
@@ -101,7 +110,7 @@
     70%  { box-shadow: 0 0 0 6px rgba(12,163,12,0); }
     100% { box-shadow: 0 0 0 0 rgba(12,163,12,0); }
   }
-  .header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 0; }
+  .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
 
   .get-btn {
     appearance: none; border: none; cursor: pointer;
