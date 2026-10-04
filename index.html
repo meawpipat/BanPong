@@ -168,6 +168,7 @@
   <div class="tabs">
     <button class="tab-btn active" id="tabBtnBalance" data-tab="balance">Balance</button>
     <button class="tab-btn" id="tabBtnTx" data-tab="tx">Tx Count</button>
+    <button class="tab-btn" id="tabBtnMint" data-tab="mint">EventMint</button>
   </div>
 
   <!-- ===== Panel: Balance ===== -->
@@ -228,6 +229,55 @@
       ค่านี้คือ nonce ของ wallet = จำนวน tx ที่ "ส่งออก" เท่านั้น ไม่รวม tx ที่รับเข้ามา
     </footer>
   </section>
+
+  <!-- ===== Panel: EventMint (contract) ===== -->
+  <section class="panel" id="panel-mint">
+    <div class="panel-toolbar">
+      <div class="panel-sub">
+        จำนวนที่ mint ไปแล้วต่อ product ของสัญญา <code>EventMintV1</code> · อ่านจาก <code>products(id)</code> ตรง ๆ
+        (ไม่ต้องไล่ log) · auto-refresh ทุก 5 วินาที
+      </div>
+      <div style="text-align:right">
+        <div class="header-actions">
+          <span class="live-pill"><span class="dot loading" id="mintLiveDot"></span><span id="mintLiveLabel">connecting…</span></span>
+          <button class="get-btn" id="mintGetBtn"><span class="spinner"></span><span id="mintGetBtnLabel">Refresh now</span></button>
+        </div>
+        <div class="status-line" id="mintStatusLine">ยังไม่เคยดึงข้อมูล</div>
+      </div>
+    </div>
+
+    <div class="stat-tile">
+      <div>
+        <div class="label">NFT ที่ mint ไปแล้ว (ERC-721 / ERC-1155)</div>
+        <div class="value" id="mintTotalValue">–<span class="unit">ชิ้น</span></div>
+      </div>
+      <div class="meta">
+        <div id="mintCoinTotal">เหรียญ (ERC-20): —</div>
+        <div id="mintStatus">สถานะสัญญา: —</div>
+        <div id="mintLastUpdated">last fetched: —</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px"></th>
+          <th>Product</th>
+          <th>Token</th>
+          <th class="num">Minted</th>
+          <th class="num">Max supply</th>
+        </tr>
+      </thead>
+      <tbody id="mintRows"></tbody>
+    </table>
+
+    <footer>
+      Contract: <code>0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441</code> (EventMintV1) ·
+      RPC: <code id="mintRpcUsed">https://rpc.bitkubchain.io</code> · chain id 96 ·
+      <strong>minted</strong> คือยอดสะสมตั้งแต่ deploy · <code>max supply = 0</code> หมายถึงไม่จำกัด ·
+      product แบบ ERC-20 นับเป็นจำนวนเหรียญ (18 decimals) จึงแยกยอดจาก NFT
+    </footer>
+  </section>
 </div>
 
 <script>
@@ -286,6 +336,32 @@ async function rpcBatchCall(url, addresses, method) {
     return BigInt(entry.result);
   });
 }
+
+/* ---------- eth_call (สำหรับ contract) ---------- */
+// batch แบบ generic — ต่างจาก rpcBatchCall ตรงที่ส่ง method/params ของใครของมันได้
+async function rpcBatchRaw(url, calls) {
+  const payload = calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: c.method, params: c.params }));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("unexpected response shape");
+  const byId = new Map(data.map(d => [d.id, d]));
+  return calls.map((_, i) => {
+    const entry = byId.get(i);
+    return !entry || entry.error || typeof entry.result !== "string" ? null : entry.result;
+  });
+}
+
+const ethCall = (to, data) => ({ method: "eth_call", params: [{ to, data }, "latest"] });
+/** ตัด return data เป็น word ละ 32 ไบต์ (ฟิลด์ที่เราอ่านเป็น static ทั้งหมด จึงหั่นตรง ๆ ได้) */
+const words = (hex) => (hex && hex.length > 2 ? hex.slice(2).match(/.{64}/g) ?? [] : []);
+const toBig = (w) => (w ? BigInt("0x" + w) : null);
+const toAddr = (w) => (w ? "0x" + w.slice(24) : null);
+const uintArg = (n) => BigInt(n).toString(16).padStart(64, "0");
 
 /* ---------- Tabs ---------- */
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -460,6 +536,141 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   getBtn.addEventListener("click", getTxCounts);
   getTxCounts();
   setInterval(getTxCounts, POLL_MS);
+})();
+
+/* ---------- EventMint tab ---------- */
+(function () {
+  // selector ดึงมาจาก artifact ของ EventMintV1 (hardhat build-info) — ไม่ต้องมี keccak ในหน้านี้
+  const CONTRACT = "0x9F1EaF1A3FBb4d238f679B1c3BAcb8B49b427441";
+  const SEL = { productCount: "0xe0f6ef87", products: "0x7acc0b20", paused: "0x5c975abb" };
+  const KIND = { 0: "ERC-20", 1: "ERC-721", 2: "ERC-1155" }; // enum ProductKind ของสัญญา
+  const ERC20_DECIMALS = 18; // เหรียญของโปรเจกต์ใช้ 18 — ไม่ยิง decimals() เพิ่มเพื่อประหยัด call
+  const CHUNK = 50;          // แบ่ง batch (ของจริง 143 product · RPC สำรองอาจรับได้น้อยกว่าตัวหลัก)
+
+  const rowsEl = document.getElementById("mintRows");
+  const getBtn = document.getElementById("mintGetBtn");
+  const getBtnLabel = document.getElementById("mintGetBtnLabel");
+  const statusLine = document.getElementById("mintStatusLine");
+  const totalValueEl = document.getElementById("mintTotalValue");
+  const coinTotalEl = document.getElementById("mintCoinTotal");
+  const statusEl = document.getElementById("mintStatus");
+  const lastUpdatedEl = document.getElementById("mintLastUpdated");
+  const rpcUsedEl = document.getElementById("mintRpcUsed");
+  const liveDot = document.getElementById("mintLiveDot");
+  const liveLabel = document.getElementById("mintLiveLabel");
+
+  let inFlight = false;
+  let rpcIndex = 0;
+
+  /** ยิง calls ชุดหนึ่งไปยัง RPC ตัวแรกที่ตอบได้ (fallback เหมือนแท็บอื่น) */
+  async function callWithFallback(calls) {
+    for (let attempt = 0; attempt < RPC_URLS.length; attempt++) {
+      const url = RPC_URLS[(rpcIndex + attempt) % RPC_URLS.length];
+      try {
+        const out = await rpcBatchRaw(url, calls);
+        rpcIndex = (rpcIndex + attempt) % RPC_URLS.length;
+        return { out, url };
+      } catch (e) { /* ลองตัวถัดไป */ }
+    }
+    return null;
+  }
+
+  /** จำนวนเต็มแบบ BigInt → ข้อความ (ห้ามแปลงเป็น Number: ยอด ERC-20 เกิน MAX_SAFE_INTEGER) */
+  const fmtInt = (v) => v.toLocaleString("en-US");
+  function fmtUnits(v, decimals) {
+    const base = 10n ** BigInt(decimals);
+    const frac = (v % base).toString().padStart(decimals, "0").slice(0, 2).replace(/0+$/, "");
+    return fmtInt(v / base) + (frac ? "." + frac : "");
+  }
+
+  function fail(msg) {
+    liveDot.className = "dot err";
+    liveLabel.textContent = "connection failed, retrying…";
+    statusLine.classList.add("err");
+    statusLine.textContent = msg;
+  }
+
+  async function load() {
+    if (inFlight) return;
+    inFlight = true;
+    getBtn.disabled = true;
+    getBtn.classList.add("loading");
+    getBtnLabel.textContent = "กำลังดึงข้อมูล…";
+    statusLine.classList.remove("err");
+    statusLine.textContent = "กำลังเรียก RPC…";
+
+    const done = () => {
+      getBtn.disabled = false;
+      getBtn.classList.remove("loading");
+      getBtnLabel.textContent = "Refresh now";
+      inFlight = false;
+    };
+
+    // รอบแรก: มีกี่ product + สัญญาถูก pause ไหม
+    const head = await callWithFallback([ethCall(CONTRACT, SEL.productCount), ethCall(CONTRACT, SEL.paused)]);
+    if (!head || head.out[0] === null) {
+      done();
+      return fail("ดึงข้อมูลสัญญาไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที");
+    }
+
+    const count = Number(toBig(words(head.out[0])[0]) ?? 0n);
+    const paused = toBig(words(head.out[1] ?? "")[0]) === 1n;
+
+    // รอบสอง: products(0..count-1) — **id เริ่มที่ 0** (ยืนยันกับ chain จริง: products(0) มีข้อมูล)
+    const results = [];
+    for (let from = 0; from < count; from += CHUNK) {
+      const ids = Array.from({ length: Math.min(CHUNK, count - from) }, (_, i) => from + i);
+      const res = await callWithFallback(ids.map(id => ethCall(CONTRACT, SEL.products + uintArg(id))));
+      if (!res) {
+        done();
+        return fail("ดึงรายการ product ไม่สำเร็จ จะลองใหม่อัตโนมัติใน 5 วินาที");
+      }
+      results.push(...res.out);
+      rpcUsedEl.textContent = res.url;
+    }
+    done();
+
+    liveDot.className = "dot";
+    liveLabel.textContent = "live";
+    statusEl.textContent = `สถานะสัญญา: ${paused ? "⏸ paused" : "✓ active"} · ${fmtInt(BigInt(count))} product`;
+
+    let nftTotal = 0n, coinTotal = 0n, anyError = false;
+    rowsEl.innerHTML = "";
+    results.forEach((raw, id) => {
+      const w = words(raw ?? "");
+      const tr = document.createElement("tr");
+      if (w.length < 6) {
+        anyError = true;
+        tr.innerHTML = `<td class="status"><span class="s-dot err"></span></td><td>#${id}</td><td class="addr">—</td><td class="num">error</td><td class="num">—</td>`;
+      } else {
+        const kind = Number(toBig(w[0]));
+        const token = toAddr(w[1]);
+        const tokenId = toBig(w[2]);
+        const maxSupply = toBig(w[3]);
+        const minted = toBig(w[4]);
+        const active = toBig(w[5]) === 1n;
+        const isCoin = kind === 0;
+        if (isCoin) coinTotal += minted; else nftTotal += minted;
+        tr.innerHTML = `
+          <td class="status"><span class="s-dot ${active ? "ok" : ""}"></span></td>
+          <td>#${id} <span class="unit">${KIND[kind] ?? "kind " + kind}</span></td>
+          <td class="addr" title="${token}">${short(token)} <span class="unit">#${tokenId}</span></td>
+          <td class="num">${isCoin ? fmtUnits(minted, ERC20_DECIMALS) : fmtInt(minted)}</td>
+          <td class="num">${maxSupply === 0n ? "∞" : isCoin ? fmtUnits(maxSupply, ERC20_DECIMALS) : fmtInt(maxSupply)}</td>
+        `;
+      }
+      rowsEl.appendChild(tr);
+    });
+
+    totalValueEl.innerHTML = fmtInt(nftTotal) + '<span class="unit">ชิ้น</span>';
+    coinTotalEl.textContent = "เหรียญ (ERC-20): " + fmtUnits(coinTotal, ERC20_DECIMALS);
+    lastUpdatedEl.textContent = "last fetched: " + new Date().toLocaleTimeString("th-TH", { hour12: false });
+    statusLine.textContent = anyError ? "ดึงสำเร็จบางส่วน (มี product ที่ error)" : "ดึงสำเร็จ · รีเฟรชครั้งถัดไปใน 5 วินาที";
+  }
+
+  getBtn.addEventListener("click", load);
+  load();
+  setInterval(load, POLL_MS);
 })();
 </script>
 </body>
